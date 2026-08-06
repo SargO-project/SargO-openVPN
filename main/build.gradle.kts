@@ -12,6 +12,15 @@ plugins {
     id("checkstyle")
 }
 
+/**
+ * Pick the preferred NDK if it is installed, otherwise fall back to a known available version.
+ * This lets the build succeed on machines that do not have the exact upstream NDK revision.
+ */
+fun resolveNdkVersion(preferred: String, fallback: String): String {
+    val sdkRoot = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: return preferred
+    return if (file("$sdkRoot/ndk/$preferred").exists()) preferred else fallback
+}
+
 
 fun obtainTestBuildType(): String {
     var result = "debug";
@@ -21,6 +30,15 @@ fun obtainTestBuildType(): String {
     }
     return result
 }
+
+/**
+ * Resolve a signing configuration value.
+ * First checks Gradle project properties (e.g. ~/.gradle/gradle.properties),
+ * then falls back to environment variables so CI secrets can be used.
+ *
+ * CI passes the SargO launcher signing secrets as ANDROID_KEYSTORE_* env vars
+ * (matching the SargO launcher app/build.gradle signingConfig naming).
+ */
 
 android {
     buildFeatures {
@@ -32,7 +50,7 @@ android {
     //compileSdkPreview = "UpsideDownCake"
 
     // Also update runcoverity.sh
-    ndkVersion = "30.0.14904198"
+    ndkVersion = resolveNdkVersion("30.0.14904198", "29.0.14206865")
 
     defaultConfig {
         minSdk = 23
@@ -62,6 +80,13 @@ android {
 
         create("skeleton") {}
 
+        create("sargo") {
+            java.setSrcDirs(listOf("src/ui/java", "src/sargo/java"))
+            kotlin.setSrcDirs(listOf("src/ui/java", "src/sargo/java"))
+            res.setSrcDirs(listOf("src/ui/res", "src/sargo/res"))
+            manifest.srcFile("src/sargo/AndroidManifest.xml")
+        }
+
         getByName("debug") {}
 
         getByName("release") {}
@@ -69,29 +94,40 @@ android {
 
     signingConfigs {
         create("release") {
-            // ~/.gradle/gradle.properties
-            val keystoreFile: String? by project
-            storeFile = keystoreFile?.let { file(it) }
-            val keystorePassword: String? by project
-            storePassword = keystorePassword
-            val keystoreAliasPassword: String? by project
-            keyPassword = keystoreAliasPassword
-            val keystoreAlias: String? by project
-            keyAlias = keystoreAlias
+            // CI provides the SargO launcher signing key via ANDROID_KEYSTORE_* env vars.
+            // Local builds can also set these in ~/.gradle/gradle.properties.
+            val keystorePath = project.findProperty("androidKeystorePath") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_PATH")
+            storeFile = keystorePath?.let { file(it) }
+            storePassword = project.findProperty("androidKeystorePassword") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyPassword = project.findProperty("androidKeyPassword") as? String
+                ?: System.getenv("ANDROID_KEY_PASSWORD")
+            keyAlias = project.findProperty("androidKeyAlias") as? String
+                ?: System.getenv("ANDROID_KEY_ALIAS")
             enableV1Signing = true
             enableV2Signing = true
         }
 
         create("releaseOvpn2") {
-            // ~/.gradle/gradle.properties
-            val keystoreO2File: String? by project
-            storeFile = keystoreO2File?.let { file(it) }
-            val keystoreO2Password: String? by project
-            storePassword = keystoreO2Password
-            val keystoreO2AliasPassword: String? by project
-            keyPassword = keystoreO2AliasPassword
-            val keystoreO2Alias: String? by project
-            keyAlias = keystoreO2Alias
+            // Use the same SargO launcher signing key unless ovpn2-specific values are provided.
+            val keystoreO2Path = project.findProperty("androidKeystoreO2Path") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_O2_PATH")
+                ?: project.findProperty("androidKeystorePath") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_PATH")
+            storeFile = keystoreO2Path?.let { file(it) }
+            storePassword = (project.findProperty("androidKeystoreO2Password") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_O2_PASSWORD")
+                ?: project.findProperty("androidKeystorePassword") as? String
+                ?: System.getenv("ANDROID_KEYSTORE_PASSWORD"))
+            keyPassword = (project.findProperty("androidKeyO2Password") as? String
+                ?: System.getenv("ANDROID_KEY_O2_PASSWORD")
+                ?: project.findProperty("androidKeyPassword") as? String
+                ?: System.getenv("ANDROID_KEY_PASSWORD"))
+            keyAlias = (project.findProperty("androidKeyO2Alias") as? String
+                ?: System.getenv("ANDROID_KEY_O2_ALIAS")
+                ?: project.findProperty("androidKeyAlias") as? String
+                ?: System.getenv("ANDROID_KEY_ALIAS"))
             enableV1Signing = true
             enableV2Signing = true
         }
@@ -121,6 +157,12 @@ android {
 
         create("skeleton") {
             dimension = "implementation"
+        }
+
+        create("sargo") {
+            dimension = "implementation"
+            applicationId = "de.blinkt.openvpn"
+            versionNameSuffix = "-sargo"
         }
 
         create("ovpn23") {
@@ -277,6 +319,9 @@ dependencies {
     uiImplementation(libs.mpandroidchart)
     uiImplementation(libs.square.okhttp)
 
+    // SargO MDM client library (release AAR built from SargO/sargo/launcher/lib).
+    sargoImplementation(files("src/sargo/libs/sargo-mdm-lib-release.aar"))
+
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin)
@@ -284,5 +329,10 @@ dependencies {
     testImplementation(libs.robolectric)
 }
 
-fun DependencyHandler.uiImplementation(dependencyNotation: Any): Dependency? =
+fun DependencyHandler.uiImplementation(dependencyNotation: Any): Dependency? {
     add("uiImplementation", dependencyNotation)
+    return add("sargoImplementation", dependencyNotation)
+}
+
+fun DependencyHandler.sargoImplementation(dependencyNotation: Any): Dependency? =
+    add("sargoImplementation", dependencyNotation)
