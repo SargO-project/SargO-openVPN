@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:sharedUserId="pro.sargo">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
         SargO flavor manifest.
         This merges with src/main/AndroidManifest.xml. It contains the same UI surface
         as src/ui/AndroidManifest.xml plus the SargO-specific entry point and receiver.
+
+        The SargO launcher is treated as a separate application. This flavor communicates
+        with it only through standard Android APIs (ContentProvider, BroadcastReceiver)
+        so that the launcher has no compile-time dependency on the GPL-licensed
+        ics-openvpn code.
     -->
+
+    <queries>
+        <provider android:authorities="pro.sargo.launcher.vpn" />
+    </queries>
 
     <uses-feature
         android:name="android.software.leanback"

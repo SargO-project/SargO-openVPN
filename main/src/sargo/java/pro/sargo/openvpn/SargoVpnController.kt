@@ -6,11 +6,10 @@ import android.net.Uri
 import android.util.Log
 import de.blinkt.openvpn.api.APIVpnProfile
 import de.blinkt.openvpn.api.IOpenVPNAPIService
-import pro.sargo.SargoMDM
 
 /**
  * Orchestrates the SargO remote VPN configuration flow:
- * 1. Read configuration from SargO MDM.
+ * 1. Read configuration from the SargO launcher ContentProvider.
  * 2. Remove unwanted existing profiles.
  * 3. Import the new .ovpn profile.
  * 4. Optionally connect.
@@ -19,6 +18,7 @@ import pro.sargo.SargoMDM
 class SargoVpnController(private val context: Context) {
 
     private val configProvider = SargoVpnConfigProvider(context)
+    private val adminComponentProvider = AdminComponentProvider(context)
     private val importer = VpnProfileImporter(context)
     private val alwaysOnManager = AlwaysOnVpnManager(context)
     private val configPostProcessor = OpenVpnConfigPostProcessor()
@@ -257,7 +257,7 @@ class SargoVpnController(private val context: Context) {
 
     private fun getAdminComponent(): ComponentName? {
         return try {
-            SargoMDM.getInstance().getAdminComponent(context)
+            adminComponentProvider.getAdminComponent()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get SargO admin component", e)
             null
