@@ -22,6 +22,7 @@ class SargoVpnController(private val context: Context) {
     private val importer = VpnProfileImporter(context)
     private val alwaysOnManager = AlwaysOnVpnManager(context)
     private val configPostProcessor = OpenVpnConfigPostProcessor()
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     interface ControllerListener {
         fun onStatus(message: String)
@@ -76,8 +77,17 @@ class SargoVpnController(private val context: Context) {
         // Remove requested profiles first
         removeProfiles(service, profiles, config, listener)
 
-        // Check if the target profile already exists
-        val existing = profiles.find { it.mName == config.vpnName }
+        // Check if the target profile already exists. Prefer the UUID we stored when
+        // the profile was previously imported; fall back to display name only when the
+        // stored UUID is missing. This avoids acting on a different profile that happens
+        // to share the same name.
+        val managedUuid = getManagedProfileUuid()
+        val existing = if (managedUuid != null) {
+            profiles.find { it.mUUID == managedUuid }
+        } else {
+            profiles.find { it.mName == config.vpnName }
+                ?.also { Log.w(TAG, "Looking up managed profile by name; consider re-importing to bind UUID") }
+        }
         if (existing != null) {
             Log.v(TAG, "Profile '${config.vpnName}' already exists; skipping import")
             listener?.onStatus("Profile '${config.vpnName}' already exists")
@@ -180,8 +190,11 @@ class SargoVpnController(private val context: Context) {
     ) {
         if (config.removeAll) {
             listener?.onStatus("Removing all other profiles...")
+            val managedUuid = getManagedProfileUuid()
             profiles.forEach { profile ->
-                if (profile.mName != config.vpnName) {
+                val isManaged = managedUuid?.let { profile.mUUID == it }
+                    ?: (profile.mName == config.vpnName)
+                if (!isManaged) {
                     importer.removeProfile(service, profile.mUUID)
                 }
             }
@@ -212,6 +225,8 @@ class SargoVpnController(private val context: Context) {
         profile: APIVpnProfile,
         listener: ControllerListener?
     ) {
+        saveManagedProfileUuid(profile.mUUID)
+
         if (config.connect) {
             listener?.onStatus("Connecting profile '${profile.mName}'...")
             try {
@@ -249,6 +264,14 @@ class SargoVpnController(private val context: Context) {
         }
     }
 
+    private fun getManagedProfileUuid(): String? {
+        return prefs.getString(KEY_MANAGED_PROFILE_UUID, null)
+    }
+
+    private fun saveManagedProfileUuid(uuid: String) {
+        prefs.edit().putString(KEY_MANAGED_PROFILE_UUID, uuid).apply()
+    }
+
     /**
      * Release resources held by the controller. Must be called from the owning
      * Activity's onDestroy to avoid leaking the importer's background thread or
@@ -261,5 +284,7 @@ class SargoVpnController(private val context: Context) {
 
     companion object {
         private const val TAG = "SargOVpnController"
+        private const val PREFS_NAME = "sargo_vpn_controller"
+        private const val KEY_MANAGED_PROFILE_UUID = "managed_profile_uuid"
     }
 }

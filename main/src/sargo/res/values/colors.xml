@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SargO brand palette extracted from SargO Brand Guidelines.dc.html -->
+
+    <!-- Ink -->
+    <color name="sargo_ink_900">#0D1620</color>
+    <color name="sargo_ink_800">#16222E</color>
+    <color name="sargo_ink_700">#22303F</color>
+    <color name="sargo_ink_600">#334455</color>
+
+    <!-- Slate -->
+    <color name="sargo_slate_500">#5A6B7C</color>
+    <color name="sargo_slate_400">#8798A8</color>
+    <color name="sargo_slate_300">#B8C4CE</color>
+    <color name="sargo_slate_200">#DCE3E9</color>
+    <color name="sargo_slate_100">#EEF2F5</color>
+    <color name="sargo_slate_050">#F7F9FA</color>
+
+    <!-- Sentinel Teal -->
+    <color name="sargo_sentinel_teal_400">#23D8D0</color>
+    <color name="sargo_sentinel_teal_600">#0E9E99</color>
+    <color name="sargo_sentinel_teal_700">#0B7C78</color>
+
+    <!-- Signal Blue -->
+    <color name="sargo_signal_blue_400">#18A0F0</color>
+    <color name="sargo_signal_blue_600">#0A6FAF</color>
+    <color name="sargo_signal_blue_700">#08578A</color>
+
+    <!-- Vault Violet -->
+    <color name="sargo_vault_violet_400">#7B3CF8</color>
+    <color name="sargo_vault_violet_600">#6A2BE0</color>
+    <color name="sargo_vault_violet_700">#5620B8</color>
+
+    <!-- Functional / status -->
+    <color name="sargo_status_success">#0E9E99</color>
+    <color name="sargo_status_sync">#0A6FAF</color>
+    <color name="sargo_status_warning">#B7791F</color>
+    <color name="sargo_status_error">#C62828</color>
+    <color name="sargo_status_offline">#8798A8</color>
+
+    <!-- Semantic aliases used by the theme -->
+    <color name="sargo_primary">@color/sargo_signal_blue_600</color>
+    <color name="sargo_primary_variant">@color/sargo_signal_blue_700</color>
+    <color name="sargo_on_primary">#FFFFFF</color>
+    <color name="sargo_secondary">@color/sargo_sentinel_teal_600</color>
+    <color name="sargo_background">#FFFFFF</color>
+    <color name="sargo_surface">#FFFFFF</color>
+    <color name="sargo_on_surface">@color/sargo_ink_900</color>
+    <color name="sargo_on_surface_variant">@color/sargo_slate_500</color>
+    <color name="sargo_error">@color/sargo_status_error</color>
+    <color name="sargo_divider">@color/sargo_slate_200</color>
+</resources>

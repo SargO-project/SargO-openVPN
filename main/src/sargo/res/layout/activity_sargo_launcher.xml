@@ -2,24 +2,34 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/sargo_ink_900"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="24dp">
+
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:contentDescription="@string/app"
+        android:src="@drawable/ic_sargo_mark" />
 
     <ProgressBar
         android:id="@+id/sargo_progress"
         style="?android:attr/progressBarStyleLarge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminate="true" />
+        android:layout_marginTop="32dp"
+        android:indeterminate="true"
+        android:indeterminateTint="@color/sargo_sentinel_teal_400" />
 
     <TextView
         android:id="@+id/sargo_status_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:fontFamily="@font/ibm_plex_sans"
         android:text="@string/app"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:visibility="visible" />
+        android:textColor="@color/sargo_slate_050" />
 
 </LinearLayout>

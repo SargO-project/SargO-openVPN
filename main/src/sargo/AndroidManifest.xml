@@ -27,7 +27,7 @@
         <activity
             android:name=".sargo.SargoLauncherActivity"
             android:exported="true"
-            android:theme="@style/blinkt"
+            android:theme="@style/SargO.Launcher"
             android:label="@string/app">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -47,27 +47,32 @@
                 <action android:name="pro.sargo.push.configUpdated" />
             </intent-filter>
         </receiver>
-
-        <!-- Standard ics-openvpn UI activities (mirrored from src/ui/AndroidManifest.xml) -->
+        <!--
+            Standard ics-openvpn UI activities (mirrored from src/ui/AndroidManifest.xml).
+            In the SargO flavor these are kept internal only; external profile import paths
+            are removed so the MDM channel is the only way to provision VPN configs.
+        -->
         <activity
             android:name=".activities.MainActivity"
-            android:exported="true"
-            tools:ignore="ExportedActivity">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="openvpn" />
-                <data android:host="import-profile" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:theme="@style/Theme.SargO.OpenVPN"
+            tools:node="replace" />
+
+        <activity
+            android:name=".activities.ConfigConverter"
+            tools:node="remove" />
+
+        <activity-alias
+            android:name=".activities.ConfigConverterFile"
+            tools:node="remove" />
+
+        <activity
+            android:name=".activities.CreateShortcuts"
+            tools:node="remove" />
 
         <activity
             android:name=".activities.CredentialsPopup"
-            android:theme="@style/blinkt.dialog" />
+            android:theme="@style/SargO.Dialog" />
 
         <activity
             android:name=".activities.LogWindow"
@@ -81,6 +86,16 @@
             android:windowSoftInputMode="stateHidden" />
 
         <activity android:name=".activities.FileSelect" />
+
+        <activity
+            android:name=".activities.OpenSSLSpeed"
+            android:exported="false"
+            android:label="@string/title_activity_open_sslspeed"
+            android:parentActivityName=".activities.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="de.blinkt.openvpn.activities.MainActivity" />
+        </activity>
 
         <!--
             Quick Settings tile is disabled in the SargO flavor. The VPN is managed
@@ -104,88 +119,6 @@
                 android:name="android.service.quicksettings.ACTIVE_TILE"
                 android:value="false" />
         </service>
-
-        <activity
-            android:name=".activities.ConfigConverter"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:label="Convert Config File"
-            android:taskAffinity=".ConfigConverter"
-            android:uiOptions="splitActionBarWhenNarrow"
-            tools:ignore="ExportedActivity">
-            <intent-filter
-                android:label="@string/import_config"
-                tools:ignore="AppLinkUrlError">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:mimeType="application/x-openvpn-profile" />
-            </intent-filter>
-            <intent-filter
-                android:label="@string/import_config"
-                tools:ignore="AppLinkUrlError">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:mimeType="application/ovpn" />
-            </intent-filter>
-            <intent-filter android:label="@string/import_config">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-                <data android:scheme="content" />
-                <data android:host="*" />
-                <data android:pathPattern=".*..*..*..*..*.ovpn" />
-                <data android:pathPattern=".*..*..*..*.ovpn" />
-                <data android:pathPattern=".*..*..*.ovpn" />
-                <data android:pathPattern=".*..*.ovpn" />
-                <data android:pathPattern=".*.ovpn" />
-            </intent-filter>
-        </activity>
-
-        <activity-alias
-            android:exported="true"
-            android:name=".activities.ConfigConverterFile"
-            android:enabled="@bool/supportFileScheme"
-            android:targetActivity=".activities.ConfigConverter">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-                <data android:scheme="file" />
-                <data android:host="*" />
-                <data android:pathPattern=".*..*..*..*..*.ovpn" />
-                <data android:pathPattern=".*..*..*..*.ovpn" />
-                <data android:pathPattern=".*..*..*.ovpn" />
-                <data android:pathPattern=".*..*.ovpn" />
-                <data android:pathPattern=".*.ovpn" />
-            </intent-filter>
-        </activity-alias>
-
-        <activity
-            android:exported="true"
-            android:name=".activities.CreateShortcuts"
-            android:excludeFromRecents="true"
-            android:label="@string/vpn_shortcut"
-            android:taskAffinity=".CreateShortcuts"
-            android:theme="@android:style/Theme.DeviceDefault.Light.DialogWhenLarge">
-            <intent-filter>
-                <action android:name="android.intent.action.CREATE_SHORTCUT" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:exported="false"
-            android:name=".activities.OpenSSLSpeed"
-            android:label="@string/title_activity_open_sslspeed"
-            android:parentActivityName=".activities.MainActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="de.blinkt.openvpn.activities.MainActivity" />
-        </activity>
 
         <!--
             FileProvider is not required for the SargO-managed flow. Keep it disabled

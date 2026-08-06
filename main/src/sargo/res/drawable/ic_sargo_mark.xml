@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- SargO mark: spectrum ring approximated with Signal Blue 600, Sentinel Teal 400 triangle. -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/sargo_signal_blue_600"
+        android:strokeWidth="44"
+        android:pathData="M172 52 L340 52 C406 52 460 106 460 172 L460 340 C460 406 406 460 340 460 L172 460 C106 460 52 406 52 340 L52 172 C52 106 106 52 172 52 Z" />
+    <path
+        android:fillColor="@color/sargo_sentinel_teal_400"
+        android:pathData="M256 170 L344 356 L168 356 Z" />
+</vector>
