@@ -15,17 +15,20 @@ import android.widget.TextView
 import de.blinkt.openvpn.R
 import de.blinkt.openvpn.activities.MainActivity
 import de.blinkt.openvpn.api.IOpenVPNAPIService
-import pro.sargo.SargoMDM
 import pro.sargo.openvpn.SargoVpnController
 
 /**
  * SargO-managed entry point for OpenVPN.
  *
  * This activity:
- * 1. Connects to the SargO MDM service and waits for it to be ready.
- * 2. Binds to the ics-openvpn AIDL service and requests API permission.
- * 3. Applies the remote SargO VPN configuration.
+ * 1. Binds to the ics-openvpn AIDL service and requests API permission.
+ * 2. Reads the remote SargO VPN configuration from the launcher ContentProvider.
+ * 3. Applies the configuration.
  * 4. Forwards the user to the standard MainActivity.
+ *
+ * Communication with the SargO launcher uses only standard Android APIs
+ * (ContentProvider/BroadcastReceiver) so that the launcher remains a separate
+ * application with no compile-time dependency on the GPL-licensed OpenVPN code.
  */
 class SargoLauncherActivity : Activity() {
 
@@ -35,7 +38,6 @@ class SargoLauncherActivity : Activity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
 
-    private var isSargoConnected = false
     private var isOpenVpnBound = false
 
     private val serviceConnection = object : ServiceConnection {
@@ -54,24 +56,6 @@ class SargoLauncherActivity : Activity() {
         }
     }
 
-    private val mdmEventHandler = object : SargoMDM.EventHandler {
-        override fun onSargoMDMConnected() {
-            Log.i(TAG, "Connected to SargO MDM")
-            isSargoConnected = true
-            runOnUiThread { bindOpenVpnService() }
-        }
-
-        override fun onSargoMDMDisconnected() {
-            Log.w(TAG, "Disconnected from SargO MDM")
-            isSargoConnected = false
-        }
-
-        override fun onSargoMDMConfigChanged() {
-            Log.i(TAG, "SargO config changed")
-            vpnService?.let { applyConfiguration() }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sargo_launcher)
@@ -79,16 +63,12 @@ class SargoLauncherActivity : Activity() {
         progressBar = findViewById(R.id.sargo_progress)
         statusText = findViewById(R.id.sargo_status_text)
 
-        setStatus("Connecting to SargO MDM...")
-        connectSargo()
+        setStatus("Preparing SargO VPN...")
+        bindOpenVpnService()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isSargoConnected) {
-            SargoMDM.getInstance().disconnect(this)
-            isSargoConnected = false
-        }
         if (isOpenVpnBound) {
             try {
                 unbindService(serviceConnection)
@@ -110,21 +90,6 @@ class SargoLauncherActivity : Activity() {
                 setStatus("VPN API permission denied")
                 openMainActivity()
             }
-        }
-    }
-
-    private fun connectSargo() {
-        val connected = try {
-            SargoMDM.getInstance().connect(this, mdmEventHandler)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to connect to SargO MDM", e)
-            false
-        }
-
-        if (!connected) {
-            Log.w(TAG, "SargO MDM not available; opening standard UI")
-            setStatus("SargO MDM not available")
-            openMainActivity()
         }
     }
 
