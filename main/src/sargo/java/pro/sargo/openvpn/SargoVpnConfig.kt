@@ -33,12 +33,19 @@ data class SargoVpnConfig(
     val logLevel: Int? = null
 ) {
     companion object {
+        private const val MAX_CONFIG_LENGTH_CHARS = 1_048_576
+        private const val ALLOWED_CONTENT_AUTHORITY = "pro.sargo.launcher"
+
         /**
          * Build a [SargoVpnConfig] from raw SargO app preference strings.
          * Returns null when the configuration is incomplete or invalid.
          *
          * A configuration is considered valid when [vpnName] is non-blank and at least one of
          * [vpnConfig] or [vpnConfigContent] is non-blank.
+         *
+         * Additional safety checks:
+         * - config strings may not exceed [MAX_CONFIG_LENGTH_CHARS];
+         * - content:// URIs are restricted to the SargO launcher authority.
          */
         fun fromPreferences(
             vpnName: String?,
@@ -60,6 +67,22 @@ data class SargoVpnConfig(
             val trimmedConfigContent = vpnConfigContent?.trim() ?: ""
 
             if (trimmedName.isNullOrBlank() || (trimmedConfig.isBlank() && trimmedConfigContent.isBlank())) {
+                return null
+            }
+
+            if (trimmedConfig.length > MAX_CONFIG_LENGTH_CHARS ||
+                trimmedConfigContent.length > MAX_CONFIG_LENGTH_CHARS
+            ) {
+                return null
+            }
+
+            // When inline content is present it takes precedence, so vpnConfig is ignored.
+            // Otherwise vpnConfig must not be a network/file URI and, if it is a content://
+            // URI, it must point to the SargO launcher authority.
+            if (trimmedConfigContent.isBlank() &&
+                trimmedConfig.isNotBlank() &&
+                !isAllowedConfigSource(trimmedConfig)
+            ) {
                 return null
             }
 
@@ -86,6 +109,24 @@ data class SargoVpnConfig(
                 vpnPassword = vpnPassword?.trim()?.takeIf { it.isNotBlank() },
                 logLevel = logLevel?.trim()?.toIntOrNull()?.takeIf { it in 0..11 }
             )
+        }
+
+        private fun isAllowedConfigSource(config: String): Boolean {
+            val lower = config.lowercase()
+            // Disallow network and local file schemes that could pull configs from untrusted sources.
+            if (lower.startsWith("http://") ||
+                lower.startsWith("https://") ||
+                lower.startsWith("file://")
+            ) {
+                return false
+            }
+            if (!lower.startsWith("content://")) {
+                // Treat as inline configuration content.
+                return true
+            }
+            val after = config.removePrefix("content://").removePrefix("CONTENT://")
+            return after.startsWith("$ALLOWED_CONTENT_AUTHORITY/", ignoreCase = true) ||
+                    after.equals(ALLOWED_CONTENT_AUTHORITY, ignoreCase = true)
         }
     }
 }

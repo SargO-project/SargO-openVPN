@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    IBM Plex Sans font family.
+    Licensed under the SIL Open Font License, Version 1.1.
+    See src/sargo/assets/licenses/IBM_Plex_Sans_OFL.txt
+-->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="300"
+        android:font="@font/ibm_plex_sans_light"
+        app:fontStyle="normal"
+        app:fontWeight="300"
+        app:font="@font/ibm_plex_sans_light" />
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        android:font="@font/ibm_plex_sans_regular"
+        app:fontStyle="normal"
+        app:fontWeight="400"
+        app:font="@font/ibm_plex_sans_regular" />
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="500"
+        android:font="@font/ibm_plex_sans_medium"
+        app:fontStyle="normal"
+        app:fontWeight="500"
+        app:font="@font/ibm_plex_sans_medium" />
+</font-family>

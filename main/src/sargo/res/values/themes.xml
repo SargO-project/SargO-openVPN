@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SargO OpenVPN flavor theme. Replaces upstream @style/blinkt via src/sargo/res override. -->
+    <style name="Theme.SargO.OpenVPN" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/sargo_primary</item>
+        <item name="colorOnPrimary">@color/sargo_on_primary</item>
+        <item name="colorPrimaryContainer">@color/sargo_signal_blue_400</item>
+        <item name="colorOnPrimaryContainer">@color/sargo_on_primary</item>
+        <item name="colorSecondary">@color/sargo_secondary</item>
+        <item name="colorOnSecondary">@color/sargo_on_primary</item>
+        <item name="colorSecondaryContainer">@color/sargo_sentinel_teal_400</item>
+        <item name="colorOnSecondaryContainer">@color/sargo_ink_900</item>
+        <item name="android:colorBackground">@color/sargo_background</item>
+        <item name="colorOnBackground">@color/sargo_on_surface</item>
+        <item name="colorSurface">@color/sargo_surface</item>
+        <item name="colorOnSurface">@color/sargo_on_surface</item>
+        <item name="colorSurfaceVariant">@color/sargo_slate_100</item>
+        <item name="colorOnSurfaceVariant">@color/sargo_on_surface_variant</item>
+        <item name="colorError">@color/sargo_error</item>
+        <item name="colorOnError">@color/sargo_on_primary</item>
+        <item name="android:statusBarColor">@color/sargo_ink_900</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:fontFamily">@font/ibm_plex_sans</item>
+        <item name="fontFamily">@font/ibm_plex_sans</item>
+    </style>
+
+    <!-- Launcher entry-point theme: dark Ink background with SargO accent. -->
+    <style name="SargO.Launcher" parent="Theme.SargO.OpenVPN">
+        <item name="android:windowBackground">@color/sargo_ink_900</item>
+        <item name="android:colorBackground">@color/sargo_ink_900</item>
+        <item name="colorSurface">@color/sargo_ink_800</item>
+        <item name="colorOnSurface">@color/sargo_slate_050</item>
+        <item name="android:statusBarColor">@color/sargo_ink_900</item>
+    </style>
+
+    <!-- Dialog variant used by CredentialsPopup. -->
+    <style name="SargO.Dialog" parent="Theme.Material3.Light.Dialog">
+        <item name="colorPrimary">@color/sargo_primary</item>
+        <item name="colorOnPrimary">@color/sargo_on_primary</item>
+        <item name="android:fontFamily">@font/ibm_plex_sans</item>
+        <item name="fontFamily">@font/ibm_plex_sans</item>
+    </style>
+</resources>

@@ -53,7 +53,7 @@ class SargoVpnConfigTest {
     fun fromPreferences_trimsWhitespace() {
         val config = SargoVpnConfig.fromPreferences(
             vpnName = "  Trimmed  ",
-            vpnConfig = "  content://test  ",
+            vpnConfig = "  content://pro.sargo.launcher/config  ",
             connect = " 1 ",
             alwaysOn = " 0 ",
             remove = "  A , B ",
@@ -62,7 +62,7 @@ class SargoVpnConfigTest {
 
         assertNotNull(config)
         assertEquals("Trimmed", config?.vpnName)
-        assertEquals("content://test", config?.vpnConfig)
+        assertEquals("content://pro.sargo.launcher/config", config?.vpnConfig)
         assertTrue(config?.connect == true)
         assertFalse(config?.alwaysOn == true)
         assertEquals("A , B", config?.remove)
@@ -257,5 +257,67 @@ class SargoVpnConfigTest {
         assertNotNull(config)
         assertNull(config?.vpnUsername)
         assertNull(config?.vpnPassword)
+    }
+
+    @Test
+    fun fromPreferences_rejectsOversizedConfig() {
+        val oversized = "client\n".repeat(300_000)
+        val config = SargoVpnConfig.fromPreferences(
+            vpnName = "Huge",
+            vpnConfig = oversized,
+            connect = null,
+            alwaysOn = null,
+            remove = null,
+            removeAll = null
+        )
+        assertNull(config)
+    }
+
+    @Test
+    fun fromPreferences_acceptsSargoLauncherContentUri() {
+        val config = SargoVpnConfig.fromPreferences(
+            vpnName = "Content",
+            vpnConfig = "content://pro.sargo.launcher/config/office.ovpn",
+            connect = null,
+            alwaysOn = null,
+            remove = null,
+            removeAll = null
+        )
+        assertNotNull(config)
+    }
+
+    @Test
+    fun fromPreferences_rejectsForeignContentAuthority() {
+        val config = SargoVpnConfig.fromPreferences(
+            vpnName = "Content",
+            vpnConfig = "content://malicious.app/config/office.ovpn",
+            connect = null,
+            alwaysOn = null,
+            remove = null,
+            removeAll = null
+        )
+        assertNull(config)
+    }
+
+    @Test
+    fun fromPreferences_rejectsNetworkAndFileSchemes() {
+        assertNull(
+            SargoVpnConfig.fromPreferences(
+                vpnName = "A", vpnConfig = "https://evil.example.com/config.ovpn",
+                connect = null, alwaysOn = null, remove = null, removeAll = null
+            )
+        )
+        assertNull(
+            SargoVpnConfig.fromPreferences(
+                vpnName = "A", vpnConfig = "http://evil.example.com/config.ovpn",
+                connect = null, alwaysOn = null, remove = null, removeAll = null
+            )
+        )
+        assertNull(
+            SargoVpnConfig.fromPreferences(
+                vpnName = "A", vpnConfig = "file:///sdcard/config.ovpn",
+                connect = null, alwaysOn = null, remove = null, removeAll = null
+            )
+        )
     }
 }
