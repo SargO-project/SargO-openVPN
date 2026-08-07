@@ -12,27 +12,30 @@ SargO specifinis kodas izoliuotas `main/src/sargo/` kataloge:
 - `java/pro/sargo/openvpn/` — VPN konfigūracijos importo ir valdymo logika.
 - `res/values/strings.xml` — SargO flavor programos pavadinimas.
 
-## SargO MDM biblioteka
+## Kaip gaunama konfigūracija
 
-AAR gaunamas iš atskiro `SargO/sargo/launcher/lib/` projekto:
+**Jokios AAR priklausomybės nebėra.** Anksčiau čia buvo aprašyta, kaip kopijuoti
+`sargo-mdm-lib-release.aar` iš `launcher/lib` ir prijungti jį per
+`sargoImplementation(files(...))`. Tas kelias pašalintas: bibliotekos nėra nei
+`main/src/sargo/libs/`, nei git indekse, o instrukcija liko rodyti į žingsnį, kurio
+nebeliko.
 
-```bash
-cd /Users/eduardas/Documents/SargO/sargo/launcher
-sh gradlew :lib:assembleRelease
-```
+Kas jį pakeitė — **ContentProvider kontraktas**. Ši programa skaito konfigūraciją iš
+SargO launcher'io per `content://pro.sargo.launcher.vpn/config` ir `/admin`
+(`SargoVpnContract`), o apie pasikeitimus sužino iš `pro.sargo.push.configUpdated`
+broadcast'o. Nė vienas iš šių kelių nereikalauja kompiliavimo metu matyti launcher'io
+kodą, o launcher'iui — matyti GPL kodą.
 
-Sukurtas failas perkeliamas į šį projektą:
+**Kodėl ne dėl licencijos.** `doc/LICENSE.txt` turi aiškią autoriaus išimtį, leidžiančią
+susieti šią programą su Apache-2.0 bibliotekomis, tad AAR variantas buvo teisėtas.
+Atsiejimo nauda yra praktinė, ne teisinė: nebereikia perstatinėti ir perkopijuoti
+binarinio artefakto kiekvieną kartą, kai pasikeičia `launcher/lib`, ir dingsta visa
+pasenusio blob'o klaidų klasė.
 
-```bash
-cp /Users/eduardas/Documents/SargO/sargo/launcher/lib/build/outputs/aar/lib-release.aar \
-   /Users/eduardas/Documents/SargO_openVPN/ics-openvpn/main/src/sargo/libs/sargo-mdm-lib-release.aar
-```
-
-`main/build.gradle.kts` priklausomybė rodo į release AAR:
-
-```kotlin
-sargoImplementation(files("src/sargo/libs/sargo-mdm-lib-release.aar"))
-```
+**Ką tai reikalauja iš launcher'io pusės:** provider'is ties `pro.sargo.launcher.vpn`
+turi egzistuoti ir būti apsaugotas parašo lygio leidimu. Kol jo nėra,
+`SargoVpnConfigProvider.loadConfig()` grąžina `null` ir rodomas standartinis OpenVPN UI —
+integracija tyliai neveikia, bet nelūžta.
 
 ## Build komandos
 

@@ -13,6 +13,31 @@
         ics-openvpn code.
     -->
 
+    <!--
+        REQUIRED, and its absence was silent. The SargO launcher sends the config-updated broadcast
+        as `sendBroadcast(intent, Const.PERMISSION_PUSH_CONFIG)`, and that argument names a
+        permission the RECEIVER must HOLD. Declaring `android:permission` on the receiver below is
+        the other direction — it constrains the sender — so the two together were only half the
+        contract: without this line the system dropped every config broadcast before it reached us,
+        with no error on either side.
+
+        Granted by signature: both APKs are signed with the SargO launcher key.
+    -->
+    <uses-permission android:name="pro.sargo.permission.PUSH_CONFIG" />
+
+    <!--
+        Read access to the launcher's VpnConfigProvider, which is where this flavour gets its
+        configuration now that the MDM AAR is gone. A SEPARATE permission from PUSH_CONFIG above,
+        deliberately: that one only says "you may be told the configuration changed", and these
+        rows carry the VPN credentials themselves.
+
+        Granted by signature. Without it every query returns SecurityException and
+        SargoVpnConfigProvider.loadConfig() falls back to null, which the app treats as "no
+        configuration" — i.e. the integration would silently do nothing, which is exactly how the
+        missing PUSH_CONFIG line above behaved before it was found.
+    -->
+    <uses-permission android:name="pro.sargo.permission.READ_VPN_CONFIG" />
+
     <queries>
         <provider android:authorities="pro.sargo.launcher.vpn" />
     </queries>

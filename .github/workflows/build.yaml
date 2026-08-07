@@ -2,41 +2,36 @@
 name: Build
 permissions:
   contents: read
-on: [push, pull_request]
+# `push` is restricted to main. It used to be bare `[push, pull_request]`, which built every commit
+# on a PR branch TWICE — once for the push and once for the pull_request — and, far worse, put the
+# release signing step on every branch in a PUBLIC repository. See the signing job below.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
+  # UNSIGNED, and it runs everywhere. This is the job that tells you the tree still builds: no
+  # secrets, no Environment, so it also runs on a pull request from a fork, where GitHub withholds
+  # secrets by design and the old workflow silently fell back to a debug-signed build that it then
+  # uploaded under a name ending in `-release-apk`.
   build:
     strategy:
       fail-fast: false
       matrix:
           target: [UiOvpn23, SkeletonOvpn2, UiOvpn2, SargoOvpn23]
-    name: "Release ${{ matrix.target }}"
+    name: "Build ${{ matrix.target }} (unsigned)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Setup release signing
-        env:
-          KEYSTORE_B64: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.LAUNCHER_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.LAUNCHER_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.LAUNCHER_KEY_PASSWORD }}
+      - name: Build without any signing material
         run: |
           mkdir -p ~/.gradle
-          if [ -n "$KEYSTORE_B64" ]; then
-            printf '%s' "$KEYSTORE_B64" | base64 -d > "$HOME/.sargo-release.keystore"
-            cat > ~/.gradle/gradle.properties <<EOF
-          org.gradle.jvmargs=-Xmx2048M
-          androidKeystorePath=$HOME/.sargo-release.keystore
-          androidKeystorePassword=$KEYSTORE_PASSWORD
-          androidKeyAlias=$KEY_ALIAS
-          androidKeyPassword=$KEY_PASSWORD
-          EOF
-          else
-            echo -e "icsopenvpnDebugSign=true\norg.gradle.jvmargs=-Xmx2048M" > ~/.gradle/gradle.properties
-          fi
+          printf 'icsopenvpnDebugSign=true\norg.gradle.jvmargs=-Xmx2048M\n' > ~/.gradle/gradle.properties
       - name: set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -50,8 +45,103 @@ jobs:
       - name: Run Unit tests
         run: ./gradlew -PtestBuildType=release test${{ matrix.target }}ReleaseUnitTest
 
+      # Named for what it is. The old name said `release` while the APK could be debug-signed.
       - name: Archive apk artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{matrix.target}}-release-apk
+          name: build-${{matrix.target}}-unsigned-apk
           path: main/build/outputs/apk/**/*universal*.apk
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------------------------------
+  # THE ONLY JOB THAT TOUCHES THE DEVICE OWNER SIGNING KEY.
+  #
+  # That key signs the SargO launcher, which is a Device Owner app: losing or leaking it means a
+  # factory reset on every enrolled device, with no remote recovery. The MDM repository states the
+  # rule it is held to — the four secrets live in a GitHub Environment whose deployment-branch
+  # policy is `main` only, so a pull request cannot produce a production-signed APK BY
+  # CONSTRUCTION.
+  #
+  # THIS REPOSITORY IS PUBLIC, AND UNTIL THIS CHANGE IT HAD NEITHER GUARD: the signing step ran
+  # under `on: [push, pull_request]` at job level with no environment and no ref test, so every
+  # push to every branch materialised the keystore onto a runner and uploaded a key-signed APK as a
+  # publicly downloadable artifact. GitHub withholds secrets from fork pull requests, so this was
+  # never reachable by an outside PR — the exposure was every branch, to everyone with write
+  # access, plus the artifacts themselves.
+  #
+  # Two gates now, deliberately redundant, the same pair the MDM repository uses:
+  #   * `environment:` — its branch policy is the one that actually enforces this, and it is a
+  #     repository SETTING no file here can assert. If it has not been created and restricted to
+  #     `main`, this comment is intent and not a control.
+  #   * `if: github.ref` — so the job SKIPS cleanly off main rather than hard-failing against that
+  #     policy, and so the intent is visible in the file even when the setting is not.
+  signed-release:
+    name: "SargO release (signed)"
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: launcher-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify signing secrets are set
+        env:
+          KEYSTORE_B64: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.LAUNCHER_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.LAUNCHER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LAUNCHER_KEY_PASSWORD }}
+        run: |
+          # The Gradle config falls back to a debug signature when the keystore is absent, which is
+          # right for a developer and wrong here. Fail CLOSED rather than shipping a debug-signed
+          # artifact under a name that says release.
+          for v in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!v}" ] || { echo "::error::a required LAUNCHER_* secret is unset ($v)"; exit 1; }
+          done
+
+      - name: Checkout the code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup release signing
+        env:
+          KEYSTORE_B64: ${{ secrets.LAUNCHER_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.LAUNCHER_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.LAUNCHER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LAUNCHER_KEY_PASSWORD }}
+        run: |
+          umask 077
+          mkdir -p ~/.gradle
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$HOME/.sargo-release.keystore"
+          cat > ~/.gradle/gradle.properties <<EOF
+          org.gradle.jvmargs=-Xmx2048M
+          androidKeystorePath=$HOME/.sargo-release.keystore
+          androidKeystorePassword=$KEYSTORE_PASSWORD
+          androidKeyAlias=$KEY_ALIAS
+          androidKeyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build the signed SargO app
+        run: ./gradlew assembleSargoOvpn23Release
+
+      - name: Assert the artifact is signed by the expected key and is not debuggable
+        env:
+          EXPECTED_SIGNER: ${{ vars.EXPECTED_SIGNER_RELEASE }}
+          EXPECTED_APP_ID: pro.sargo.openvpn
+        run: bash .github/scripts/assert-sargo-apk.sh
+
+      - name: Wipe keystore
+        if: always()
+        run: shred -u "$HOME/.sargo-release.keystore" 2>/dev/null || rm -f "$HOME/.sargo-release.keystore"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sargo-openvpn-release-apk
+          path: main/build/outputs/apk/**/*universal*.apk
+          if-no-files-found: error
+          retention-days: 90
