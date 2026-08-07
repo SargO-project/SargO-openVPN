@@ -13,6 +13,30 @@
         ics-openvpn code.
     -->
 
+    <!--
+        REQUIRED TO READ THE LAUNCHER'S CONFIGURATION, and its absence is not a build error
+        anywhere. The launcher declares pro.sargo.permission.READ_VPN_CONFIG at
+        protectionLevel="signature" and guards its VpnConfigProvider
+        (content://pro.sargo.launcher.vpn) with it. A signature permission is granted only when
+        the consumer DECLARES it here AND the signatures match. Ours do match, so this line is
+        the whole of what was missing.
+
+        Without it, contentResolver.query() on that authority throws SecurityException on the
+        device, while this repository and the launcher's both stay green, because neither build
+        can see the other half of the contract.
+
+        NOT the same permission as PUSH_CONFIG on the receiver below, and the two are not
+        interchangeable. PUSH_CONFIG means "you may be told the configuration changed";
+        READ_VPN_CONFIG means "you may read it", and those rows carry VPN credentials.
+        Conflating them would let anything allowed to hear a ping also read a password.
+    -->
+    <uses-permission android:name="pro.sargo.permission.READ_VPN_CONFIG" />
+
+    <!--
+        Package visibility only. This lets the app SEE the provider; it does not grant access to
+        it. Having this without the permission above is exactly the state that produced the
+        silent failure described there.
+    -->
     <queries>
         <provider android:authorities="pro.sargo.launcher.vpn" />
     </queries>
