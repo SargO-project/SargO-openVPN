@@ -161,7 +161,20 @@ android {
 
         create("sargo") {
             dimension = "implementation"
-            applicationId = "de.blinkt.openvpn"
+            // OUR identity, not upstream's. This flavour used to declare `de.blinkt.openvpn`,
+            // which is the applicationId of the real OpenVPN for Android on Google Play: a device
+            // carrying that app cannot install ours and vice versa, because the signatures differ,
+            // and our build would have claimed someone else's package name while being signed with
+            // the SargO launcher key.
+            //
+            // Only the applicationId moves. The Java package `de.blinkt.openvpn` stays exactly
+            // where it is — it is upstream's class hierarchy, doc/LICENSE.txt names it as the thing
+            // that creates derivative work, and renaming it would be both a licence problem and a
+            // pointless diff against every future upstream merge.
+            //
+            // Nothing on the SargO side referenced the old value: measured across launcher/,
+            // server/ and docker/ in the MDM tree, and there is no seed row for a VPN app.
+            applicationId = "pro.sargo.openvpn"
             versionNameSuffix = "-sargo"
         }
 

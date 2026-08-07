@@ -2,6 +2,7 @@ package pro.sargo.openvpn
 
 import android.content.Context
 import android.database.Cursor
+import android.util.Log
 import pro.sargo.openvpn.SargoVpnContract.ConfigColumns
 
 /**
@@ -18,6 +19,11 @@ class SargoVpnConfigProvider(private val context: Context) {
         val cursor = try {
             context.contentResolver.query(SargoVpnContract.CONFIG_URI, null, null, null, null)
         } catch (e: Exception) {
+        // Logged, not swallowed. A denied query and an absent launcher are indistinguishable at
+        // this call site, and both end as "no configuration" — which is how the missing
+        // PUSH_CONFIG permission stayed invisible for a whole release cycle. One line in logcat is
+        // the difference between "the integration is off" and "the integration is broken".
+            Log.w(TAG, "Could not read VPN config from ${SargoVpnContract.CONFIG_URI}: ${e.javaClass.simpleName}: ${e.message}")
             null
         } ?: return null
 
@@ -39,6 +45,10 @@ class SargoVpnConfigProvider(private val context: Context) {
                 logLevel = it.getString(ConfigColumns.LOG_LEVEL)
             )
         }
+    }
+
+    private companion object {
+        const val TAG = "SargoVpn"
     }
 
     private fun Cursor.getString(column: String): String? {
